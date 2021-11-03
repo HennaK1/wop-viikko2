@@ -1,29 +1,58 @@
 'use strict';
 // userController
-const userModel = require('../models/userModel');
+const {getAllUsers, getUser, addUser} = require('../models/userModel');
+const {httpError} = require("../utils/errors");
 
-const {users, getUser} = userModel;
+//const users = userModel.users;
 
-const user_list_get = (req, res) => {
-    //remobve password from users
-    const newUsers = users.map((user)=>{
-        delete user.password
-        return user;
-    });
-  res.json(newUsers);
+const user_list_get = async (req, res, next) => {
+  try {
+    const users = await getAllUsers(next);
+    if (users.length > 0) {
+    res.json(users);
+    } else {
+      next('No users found', 404);
+    }
+  } catch (e) {
+    console.log('user_list_get error', e.message);
+    next(httpError('internal server error.', 500));
+  }
 };
 
-const user_get = (req, res) => {
+const user_get = async (req, res, next) => {
     //lähetä yksi user
-    const vastaus = getUser(req.params.id);
-    delete vastaus.password;
-    res.json(vastaus);
-}
+    try {
+      const vastaus = await getUser(req.params.id, next);
+      if (vastaus.length > 0) {
+        res.json(vastaus.pop());
+    } else {
+      next(httpError('User not found', 404));
+    }
+  } catch (e){
+    console.log('user_get error', e.message);
+    next(httpError('internal server error.', 500));
+  }  
+};
 
-const user_post = (req,res) => {
-    console.log(req.body);
-    res.send('With this endpoint you can add users.');
-}
+const user_post = async (req,res, next) => {
+  try {
+    console.log('lomakkeesta',req.body);
+    const {name, email, passwd} = req.body;
+    const tulos = await addUser(name, email, passwd, next);
+    console.log('tulos',tulos);
+    if (tulos.affectedRows > 0) {
+        res.json({
+          message: 'user added',
+          user_id: tulos.insertId,
+        });
+    } else {
+      next(httpError('No user inserted', 400));
+    }
+  } catch (error) {
+    console.log('user_post error', e.message);
+    next(httpError('internal server error.', 500));
+  }
+};
 
 module.exports = {
   user_list_get,
