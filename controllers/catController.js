@@ -1,6 +1,6 @@
 'use strict';
 // catController
-const {getAllCats, getCat, addCat} = require('../models/catModel');
+const {getAllCats, getCat, addCat, modifyCat, deleteCat} = require('../models/catModel');
 const {httpError} = require("../utils/errors");
 
 //const cats = catModel.cats;
@@ -55,8 +55,47 @@ const cat_post = async (req,res, next) => {
   }
 };
 
+const cat_put = async (req,res, next) => {
+  console.log('cat_put',req.body);
+  //pvm 2010-05-21
+  try {
+    const {name,birthdate, weight, owner, id}= req.body;
+    const tulos = await modifyCat(name, weight, owner,birthdate, id, next);
+    if (tulos.affectedRows > 0) {
+        res.json({
+          message: 'cat modified',
+          cat_id: tulos.insertId,
+        });
+    } else {
+      next(httpError('No cat modified', 400));
+    }
+  } catch (error) {
+    console.log('cat_put error', e.message);
+    next(httpError('internal server error.', 500));
+  }
+};
+
+const cat_delete = async (req, res, next) => {
+  try {
+    const vastaus = await deleteCat(req.params.id, next);
+    if (vastaus.affectedRows > 0) {
+      res.json({
+        message: 'cat deleted',
+        cat_id: vastaus.insertId,
+      });
+  } else {
+    next(httpError('Cat not deleted', 404));
+  }
+} catch (e){
+  console.log('cat_delete error', e.message);
+  next(httpError('internal server error.', 500));
+}  
+};
+
 module.exports = {
   cat_list_get,
   cat_get,
   cat_post,
+  cat_put,
+  cat_delete,
 };
