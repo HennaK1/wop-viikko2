@@ -1,106 +1,130 @@
 'use strict';
 const { validationResult } = require('express-validator');
 // catController
-const {getAllCats, getCat, addCat, modifyCat, deleteCat} = require('../models/catModel');
-const {httpError} = require("../utils/errors");
-
-//const cats = catModel.cats;
+const {
+  getAllCats,
+  getCat,
+  addCat,
+  modifyCat,
+  deleteCat,
+} = require('../models/catModel');
+const { httpError } = require('../utils/errors');
 
 const cat_list_get = async (req, res, next) => {
   try {
     const cats = await getAllCats(next);
     if (cats.length > 0) {
-    res.json(cats);
+      res.json(cats);
     } else {
       next('No cats found', 404);
     }
   } catch (e) {
     console.log('cat_list_get error', e.message);
-    next(httpError('internal server error.', 500));
+    next(httpError('internal server error', 500));
   }
 };
 
 const cat_get = async (req, res, next) => {
-    //lähetä yksi kissa
-    try {
-      const vastaus = await getCat(req.params.id, next);
-      if (vastaus.length > 0) {
-        res.json(vastaus.pop());
+  try {
+    const vastaus = await getCat(req.params.id, next);
+    if (vastaus.length > 0) {
+      res.json(vastaus.pop());
     } else {
-      next(httpError('Cat not found', 404));
+      next(httpError('No cat found', 404));
     }
-  } catch (e){
+  } catch (e) {
     console.log('cat_get error', e.message);
-    next(httpError('internal server error.', 500));
-  }  
+    next(httpError('internal server error', 500));
+  }
 };
 
-const cat_post = async (req,res, next) => {
+const cat_post = async (req, res, next) => {
+  console.log('cat_post', req.body, req.file, req.user);
   const errors = validationResult(req);
-  if(!errors.isEmpty()){
-    console.log('user_cat validation', errors.array());
+  if (!errors.isEmpty()) {
+    console.log('cat_post validation', errors.array());
     next(httpError('invalid data', 400));
     return;
   }
-  if(!req.file) {
+
+  if (!req.file) {
     const err = httpError('file not valid', 400);
     next(err);
     return;
   }
+
   try {
-    console.log('lomakkeesta',req.body, req.file);
-    const {name,birthdate, weight, owner}= req.body;
-    const tulos = await addCat(name, weight, owner, req.file.filename, birthdate, next);
-    console.log('tulos',tulos);
+    const { name, birthdate, weight } = req.body;
+    const tulos = await addCat(
+      name,
+      weight,
+      req.user.user_id,
+      birthdate,
+      req.file.filename,
+      next
+    );
     if (tulos.affectedRows > 0) {
-        res.json({
-          message: 'cat added',
-          cat_id: tulos.insertId,
-        });
+      res.json({
+        message: 'cat added',
+        cat_id: tulos.insertId,
+      });
     } else {
       next(httpError('No cat inserted', 400));
     }
-  } catch (error) {
+  } catch (e) {
     console.log('cat_post error', e.message);
-    next(httpError('internal server error.', 500));
+    next(httpError('internal server error', 500));
   }
 };
 
-const cat_put = async (req,res, next) => {
-  console.log('cat_put',req.body);
-  //pvm 2010-05-21
+const cat_put = async (req, res, next) => {
+  console.log('cat_put', req.body, req.params);
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.log('cat_put validation', errors.array());
+    next(httpError('invalid data', 400));
+    return;
+  }
+  // pvm VVVV-KK-PP esim 2010-05-28
   try {
-    const {name,birthdate, weight, owner, id}= req.body;
-    const tulos = await modifyCat(name, weight, owner,birthdate, id, next);
+    const { name, birthdate, weight } = req.body;
+    const tulos = await modifyCat(
+      name,
+      weight,
+      req.user.user_id,
+      birthdate,
+      req.params.id,
+      next
+    );
     if (tulos.affectedRows > 0) {
-        res.json({
-          message: 'cat modified',
-          cat_id: tulos.insertId,
-        });
+      res.json({
+        message: 'cat modified',
+        cat_id: tulos.insertId,
+      });
     } else {
       next(httpError('No cat modified', 400));
     }
-  } catch (error) {
+  } catch (e) {
     console.log('cat_put error', e.message);
-    next(httpError('internal server error.', 500));
+    next(httpError('internal server error', 500));
   }
 };
 
 const cat_delete = async (req, res, next) => {
   try {
-    const vastaus = await deleteCat(req.params.id, next);
+    const vastaus = await deleteCat(req.params.id, req.user.user_id, next);
     if (vastaus.affectedRows > 0) {
       res.json({
         message: 'cat deleted',
         cat_id: vastaus.insertId,
       });
-  } else {
-    next(httpError('Cat not deleted', 404));
+    } else {
+      next(httpError('No cat found', 404));
+    }
+  } catch (e) {
+    console.log('cat_delete error', e.message);
+    next(httpError('internal server error', 500));
   }
-} catch (e){
-  console.log('cat_delete error', e.message);
-  next(httpError('internal server error.', 500));
-}  
 };
 
 module.exports = {
