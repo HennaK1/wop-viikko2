@@ -88,12 +88,17 @@ const cat_put = async (req, res, next) => {
   // pvm VVVV-KK-PP esim 2010-05-28
   try {
     const { name, birthdate, weight } = req.body;
+    let owner = req.user.user_id;
+    if (req.user.role === 0) {
+      owner = req.body.owner;
+    }
     const tulos = await modifyCat(
       name,
       weight,
-      req.user.user_id,
+      owner,
       birthdate,
       req.params.id,
+      req.user.role,
       next
     );
     if (tulos.affectedRows > 0) {
@@ -112,7 +117,12 @@ const cat_put = async (req, res, next) => {
 
 const cat_delete = async (req, res, next) => {
   try {
-    const vastaus = await deleteCat(req.params.id, req.user.user_id, next);
+    const vastaus = await deleteCat(
+      req.params.id,
+      req.user.user_id,
+      req.user.role,
+      next
+    );
     if (vastaus.affectedRows > 0) {
       res.json({
         message: 'cat deleted',
